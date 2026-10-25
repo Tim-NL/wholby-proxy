@@ -400,6 +400,10 @@ const patchUser = (user) => {
     for (const key of ['EnabledFolders', 'BlockedMediaFolders', 'EnabledChannels', 'BlockedChannels', 'EnableContentDeletionFromFolders']) {
         if (Array.isArray(patched.Policy[key])) patched.Policy[key] = patched.Policy[key].map((id) => toUUID(id));
     }
+    // Library ids in the configuration are typed UUIDs too; Emby fills them once a user reorders or hides libraries.
+    for (const key of ['GroupedFolders', 'OrderedViews', 'LatestItemsExcludes', 'MyMediaExcludes']) {
+        if (Array.isArray(patched.Configuration[key])) patched.Configuration[key] = patched.Configuration[key].map((id) => toUUID(id));
+    }
     return patched;
 };
 
@@ -1136,7 +1140,8 @@ const jsonProxy = createProxyMiddleware({
 
         if (proxyRes.headers['content-type']?.includes('application/json')) {
             try {
-                let data = JSON.parse(responseBuffer.toString('utf8'));
+                // Some Emby files (manifests, localization strings) start with a UTF-8 BOM, which JSON.parse rejects.
+                let data = JSON.parse(responseBuffer.toString('utf8').replace(/^﻿/, ''));
 
                 if (req.url.match(/\/System\/Info\/Public/i)) {
                     data.Id = PROXY_SERVER_ID;
